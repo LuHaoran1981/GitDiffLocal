@@ -29,7 +29,7 @@ Usage:
         gdhtm -s              staged changes (git diff --cached)
 
 Options:
-    -o, --output FILE   Output HTML file (default: diff_report.html)
+    -o, --output FILE   Output HTML file (default: a temp file in the system temp dir, e.g. /tmp)
     -c, --commit REF    Compare against a specific commit/ref (default: HEAD)
     -s, --staged        Show staged changes (git diff --cached)
     --no-open           Do not auto-open the report (opening the browser is the default)
@@ -38,11 +38,13 @@ Options:
 """
 
 import argparse
+import datetime
 import html
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from difflib import SequenceMatcher
 
 
@@ -716,7 +718,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("-o", "--output", default="diff_report.html")
+    parser.add_argument("-o", "--output", default=None,
+                        help="Output HTML file (default: securely-named temp file in the system temp dir)")
     parser.add_argument("-c", "--commit", default="HEAD")
     parser.add_argument("-r", "--range", nargs=2, metavar=("REF1", "REF2"),
                         help="compare two commits directly: gdhtm -r REF1 REF2")
@@ -861,7 +864,6 @@ def main():
         f'<td class="num" style="color:#cf222e">-{total_del}</td></tr>'
     )
 
-    import datetime
     html_output = HTML_TEMPLATE.format(
         title=repo_name, repo=repo_name, commit_label=commit_label,
         gen_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -871,9 +873,17 @@ def main():
         file_sections="\n".join(file_sections),
     )
 
-    out_path = os.path.abspath(args.output)
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(html_output)
+    if args.output:
+        out_path = os.path.abspath(args.output)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(html_output)
+    else:
+        # Produce the report in the system temp dir (TMPDIR or /tmp) under a
+        # secure, randomly-generated name via mkstemp, then keep the file open
+        # for writing through the same descriptor (avoids chmod/rename races).
+        fd, out_path = tempfile.mkstemp(prefix="git_diff_", suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(html_output)
 
     print(f"\nDiff report generated: {out_path}")
     print(f"  Files: {len(files)}  (+{total_add} / -{total_del} lines)")
