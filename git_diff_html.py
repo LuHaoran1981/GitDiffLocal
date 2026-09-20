@@ -331,7 +331,7 @@ def make_diff_viewer(old_lines, new_lines, filename, syntax=True, context=3, idx
     # columns stay aligned.
     return f"""<div class="diffv" id="{vid}">
     <div class="pane old-pane"><div class="pane-head">{old_label}</div><div class="pane-body" data-ctx="{context}">{os.linesep.join(old_rows)}</div><div class="pane-xbar"><div class="pane-xbar-inner"></div></div></div>
-    <div class="splitter" title="拖动调整左右列宽 · 双击重置"></div>
+    <div class="splitter" title="Drag to resize columns · double-click to reset"></div>
     <div class="pane new-pane"><div class="pane-head">{new_label}</div><div class="pane-body" data-ctx="{context}">{os.linesep.join(new_rows)}</div><div class="pane-xbar"><div class="pane-xbar-inner"></div></div></div>
 </div>"""
 
@@ -472,7 +472,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h1>Git Diff Report</h1>
   <span class="meta">{repo} · {commit_label} · {gen_time}</span>
   <div class="nav">
-    <button id="viewModeBtn" onclick="toggleViewMode()">完整对比</button>
+    <button id="viewModeBtn" onclick="toggleViewMode()">Full view</button>
     <button onclick="toggleSidebar()">Toggle Files</button>
     <button onclick="window.scrollTo({{top:0}})">Top</button>
   </div>
@@ -485,7 +485,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 {sidebar_items}
     </ul>
   </div>
-  <div class="sb-resizer" id="sbResizer" title="拖动调整侧边栏宽度"></div>
+  <div class="sb-resizer" id="sbResizer" title="Drag to resize sidebar"></div>
 
   <div class="main" id="mainContent">
     <div class="summary">
@@ -645,7 +645,7 @@ function syncXbars() {{
 function setViewMode(mode) {{
   viewMode = mode;
   const btn = document.getElementById('viewModeBtn');
-  if (btn) btn.textContent = (mode === 'diff') ? '完整对比' : '只看变化';
+  if (btn) btn.textContent = (mode === 'diff') ? 'Full view' : 'Diff only';
 
   document.querySelectorAll('.diffv').forEach(viewer => {{
     const bodies = [viewer.querySelector('.old-pane .pane-body'),
