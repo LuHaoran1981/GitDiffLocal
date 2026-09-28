@@ -1,0 +1,24 @@
+Source: git-diff-html
+Section: vcs
+Priority: optional
+Maintainer: Lu Haoran 芦浩然 <luhaoran1981@icloud.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/LuHaoran1981/GitDiffLocal
+Vcs-Git: https://github.com/LuHaoran1981/GitDiffLocal.git
+Vcs-Browser: https://github.com/LuHaoran1981/GitDiffLocal
+
+Package: git-diff-html
+Architecture: all
+Depends: ${misc:Depends}, python3:any, git
+Description: generate side-by-side HTML diff reports for Git repositories
+ git-diff-html renders the differences in a Git repository as a
+ Gerrit/BeyondCompare-style side-by-side HTML report.
+ .
+ It supports comparing the working tree against HEAD or any commit, two
+ commits against each other, and staged changes. Reports feature
+ line-level and character-level (inline) diff highlighting, lightweight
+ C/C++ syntax highlighting, a navigable file list, a change summary, and
+ an interactive two-pane viewer with draggable splitters and synchronized
+ horizontal scrolling. The report is a single self-contained HTML file.

@@ -1,0 +1,49 @@
+.TH GIT-DIFF-HTML 1 "September 2026" "git-diff-html 1.0" "User Commands"
+.SH NAME
+git-diff-html \- generate a side-by-side HTML report of Git differences
+.SH SYNOPSIS
+.B git-diff-html
+[\fIoptions\fR] [\fIref\fR] [\fIfile ...\fR]
+.br
+.B git-diff-html
+.BR \-r " \fIREF1 REF2\fR [" \fIfile ...\fR ]
+.SH DESCRIPTION
+.B git-diff-html
+renders the differences in a Git repository as a Gerrit/BeyondCompare-style
+side-by-side HTML report with inline highlighting.  The report is a single
+self-contained HTML file that can be opened in any modern browser.
+.SH OPTIONS
+.TP
+.BR \-o ", " \-\-output " \fIFILE\fR"
+Write the report to \fIFILE\fR (default: \fIdiff_report.html\fR).
+.TP
+.BR \-c ", " \-\-commit " \fIREF\fR"
+Compare against \fIREF\fR (default: \fIHEAD\fR).
+.TP
+.BR \-r ", " \-\-range " \fIREF1 REF2\fR"
+Compare two commits directly.
+.TP
+.BR \-s ", " \-\-staged
+Show staged changes (equivalent to \fBgit diff \-\-cached\fR).
+.TP
+.BR \-\-no-open
+Do not open the report in a browser after generation.
+.TP
+.BR \-\-no-syntax
+Disable C/C++ syntax highlighting on context lines.
+.TP
+.BR \-C ", " \-\-context " \fIN\fR"
+Number of context lines around changes (default: 3).
+.SH EXAMPLES
+.TP
+.B git-diff-html
+Working tree versus HEAD, and open the report.
+.TP
+.B git-diff-html abc123
+Working tree versus commit abc123.
+.TP
+.B git-diff-html -r aaa bbb
+Commit aaa versus commit bbb.
+.SH SEE ALSO
+.BR git (1),
+.BR git-diff (1)

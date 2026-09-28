@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# Pure Python script, nothing to compile.
+override_dh_auto_build:
+
+# Install the script under its Debian binary name (no .py extension) and
+# normalize the shebang to the Debian-interpreter path.
+override_dh_install:
+	dh_install
+	install -D -m 755 git_diff_html.py \
+		$(CURDIR)/debian/git-diff-html/usr/bin/git-diff-html
+	sed -i '1s|^#!/usr/bin/env python3|#!/usr/bin/python3|' \
+		$(CURDIR)/debian/git-diff-html/usr/bin/git-diff-html

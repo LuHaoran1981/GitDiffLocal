@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# Copyright (C) 2026 上海先道智觉科技有限责任公司 (Symthosim)
+# Copyright (C) 2026 上海先道智觉科技有限责任公司 (Symthosm(Xian Dao Zhi Jue))
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
