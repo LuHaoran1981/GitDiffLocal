@@ -29,7 +29,7 @@ Usage:
         gdhtm -s              staged changes (git diff --cached)
 
 Options:
-    -o, --output FILE   Output HTML file (default: diff_report.html)
+    -o, --output FILE   Output HTML file (default: a temp file in the system temp dir, e.g. /tmp)
     -c, --commit REF    Compare against a specific commit/ref (default: HEAD)
     -s, --staged        Show staged changes (git diff --cached)
     --no-open           Do not auto-open the report (opening the browser is the default)
@@ -38,11 +38,13 @@ Options:
 """
 
 import argparse
+import datetime
 import html
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from difflib import SequenceMatcher
 
 
@@ -331,7 +333,7 @@ def make_diff_viewer(old_lines, new_lines, filename, syntax=True, context=3, idx
     # columns stay aligned.
     return f"""<div class="diffv" id="{vid}">
     <div class="pane old-pane"><div class="pane-head">{old_label}</div><div class="pane-body" data-ctx="{context}">{os.linesep.join(old_rows)}</div><div class="pane-xbar"><div class="pane-xbar-inner"></div></div></div>
-    <div class="splitter" title="拖动调整左右列宽 · 双击重置"></div>
+    <div class="splitter" title="Drag to resize columns · double-click to reset"></div>
     <div class="pane new-pane"><div class="pane-head">{new_label}</div><div class="pane-body" data-ctx="{context}">{os.linesep.join(new_rows)}</div><div class="pane-xbar"><div class="pane-xbar-inner"></div></div></div>
 </div>"""
 
@@ -472,7 +474,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h1>Git Diff Report</h1>
   <span class="meta">{repo} · {commit_label} · {gen_time}</span>
   <div class="nav">
-    <button id="viewModeBtn" onclick="toggleViewMode()">完整对比</button>
+    <button id="viewModeBtn" onclick="toggleViewMode()">Full view</button>
     <button onclick="toggleSidebar()">Toggle Files</button>
     <button onclick="window.scrollTo({{top:0}})">Top</button>
   </div>
@@ -485,7 +487,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 {sidebar_items}
     </ul>
   </div>
-  <div class="sb-resizer" id="sbResizer" title="拖动调整侧边栏宽度"></div>
+  <div class="sb-resizer" id="sbResizer" title="Drag to resize sidebar"></div>
 
   <div class="main" id="mainContent">
     <div class="summary">
@@ -645,7 +647,7 @@ function syncXbars() {{
 function setViewMode(mode) {{
   viewMode = mode;
   const btn = document.getElementById('viewModeBtn');
-  if (btn) btn.textContent = (mode === 'diff') ? '完整对比' : '只看变化';
+  if (btn) btn.textContent = (mode === 'diff') ? 'Full view' : 'Diff only';
 
   document.querySelectorAll('.diffv').forEach(viewer => {{
     const bodies = [viewer.querySelector('.old-pane .pane-body'),
@@ -716,7 +718,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("-o", "--output", default="diff_report.html")
+    parser.add_argument("-o", "--output", default=None,
+                        help="Output HTML file (default: securely-named temp file in the system temp dir)")
     parser.add_argument("-c", "--commit", default="HEAD")
     parser.add_argument("-r", "--range", nargs=2, metavar=("REF1", "REF2"),
                         help="compare two commits directly: gdhtm -r REF1 REF2")
@@ -861,7 +864,6 @@ def main():
         f'<td class="num" style="color:#cf222e">-{total_del}</td></tr>'
     )
 
-    import datetime
     html_output = HTML_TEMPLATE.format(
         title=repo_name, repo=repo_name, commit_label=commit_label,
         gen_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -871,9 +873,17 @@ def main():
         file_sections="\n".join(file_sections),
     )
 
-    out_path = os.path.abspath(args.output)
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(html_output)
+    if args.output:
+        out_path = os.path.abspath(args.output)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(html_output)
+    else:
+        # Produce the report in the system temp dir (TMPDIR or /tmp) under a
+        # secure, randomly-generated name via mkstemp, then keep the file open
+        # for writing through the same descriptor (avoids chmod/rename races).
+        fd, out_path = tempfile.mkstemp(prefix="git_diff_", suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(html_output)
 
     print(f"\nDiff report generated: {out_path}")
     print(f"  Files: {len(files)}  (+{total_add} / -{total_del} lines)")
