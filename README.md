@@ -65,7 +65,7 @@ gdhtm -s               # 暂存区变更（git diff --cached）
 
 | 选项 | 说明 |
 | --- | --- |
-| `-o, --output FILE` | 输出 HTML 文件路径（默认 `diff_report.html`） |
+| `-o, --output FILE` | 输出 HTML 文件路径（默认写入系统临时目录的临时文件） |
 | `-c, --commit REF` | 对比的基准提交（默认 `HEAD`） |
 | `-r, --range REF1 REF2` | 直接对比两个提交 |
 | `-s, --staged` | 显示暂存区变更（`git diff --cached`） |

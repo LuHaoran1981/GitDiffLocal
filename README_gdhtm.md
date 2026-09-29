@@ -48,7 +48,7 @@ gdhtm --no-open              # 只生成不弹浏览器（适合脚本/CI）
 
 | 选项 | 含义 |
 |---|---|
-| `-o, --output FILE` | 输出 HTML 路径（默认 `diff_report.html`） |
+| `-o, --output FILE` | 输出 HTML 路径（默认写入系统临时目录的临时文件） |
 | `-c, --commit REF` | 显式指定对比基准（和位置参数二选一，位置参数优先） |
 | `-r, --range REF1 REF2` | **对比两个 commit**：`git diff REF1 REF2` |
 | `-s, --staged` | 对比暂存区（`git diff --cached`） |
