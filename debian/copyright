@@ -1,14 +1,14 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: git-diff-html
-Upstream-Contact: Lu Haoran 芦浩然 <luhaoran1981@icloud.com>
+Upstream-Contact: 芦浩然 (Lu Haoran) <luhaoran1981@icloud.com>
 Source: https://github.com/LuHaoran1981/GitDiffLocal
 
 Files: *
-Copyright: 2026 上海先道智觉科技有限责任公司 (Symthosm(Xian Dao Zhi Jue))
+Copyright: 2026 上海先道智觉科技有限责任公司 (Shanghai Xiandao Zhijue Technology Co., Ltd.), Symthosm
 License: GPL-3+
 
 Files: debian/*
-Copyright: 2026 上海先道智觉科技有限责任公司 (Symthosm(Xian Dao Zhi Jue))
+Copyright: 2026 上海先道智觉科技有限责任公司 (Shanghai Xiandao Zhijue Technology Co., Ltd.), Symthosm
 License: GPL-3+
 
 License: GPL-3+

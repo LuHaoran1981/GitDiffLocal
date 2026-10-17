@@ -1,7 +1,7 @@
 Source: git-diff-html
 Section: vcs
 Priority: optional
-Maintainer: Lu Haoran 芦浩然 <luhaoran1981@icloud.com>
+Maintainer: Lu Haoran <luhaoran1981@icloud.com>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
