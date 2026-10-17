@@ -1,0 +1,82 @@
+{
+  "name": "git-diff-html",
+  "displayName": "GitDiff HTML",
+  "description": "Generate side-by-side HTML diff reports for local and Git repositories, plus a C/C++ color theme.",
+  "version": "1.0.5",
+  "publisher": "symthosm",
+  "license": "GPL-3.0-or-later",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuHaoran1981/GitDiffLocal.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Themes"
+  ],
+  "keywords": [
+    "git",
+    "diff",
+    "html",
+    "report",
+    "code review",
+    "c++",
+    "cpp",
+    "theme"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:gitdiffhtml.generateReport"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitdiffhtml.generateReport",
+        "title": "Generate Git Diff HTML Report",
+        "category": "GitDiff"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "gitdiffhtml.generateReport"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "gitdiffhtml.generateReport",
+          "group": "navigation@10"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "gitdiffhtml.generateReport",
+          "group": "navigation@10"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "gitdiffhtml.generateReport",
+          "group": "navigation@10"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "gitdiffhtml.generateReport",
+          "group": "navigation@10"
+        }
+      ]
+    },
+    "themes": [
+      {
+        "label": "Symthosm C/C++",
+        "uiTheme": "vs",
+        "path": "./themes/symthosm-cpp.json"
+      }
+    ]
+  }
+}

@@ -29,7 +29,7 @@ Usage:
         gdhtm -s              staged changes (git diff --cached)
 
 Options:
-    -o, --output FILE   Output HTML file (default: diff_report.html)
+    -o, --output FILE   Output HTML file (default: a temp file in the system temp dir, e.g. /tmp)
     -c, --commit REF    Compare against a specific commit/ref (default: HEAD)
     -s, --staged        Show staged changes (git diff --cached)
     --no-open           Do not auto-open the report (opening the browser is the default)
@@ -38,11 +38,13 @@ Options:
 """
 
 import argparse
+import datetime
 import html
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from difflib import SequenceMatcher
 
 
@@ -137,6 +139,16 @@ def run_git(args, cwd):
     return r.stdout, r.returncode
 
 
+def run_git_bytes(args, cwd):
+    r = subprocess.run(["git"] + args, cwd=cwd, capture_output=True)
+    return r.stdout, r.returncode
+
+
+def is_binary_bytes(data):
+    # git's own heuristic: a NUL byte in the first 8000 bytes means binary.
+    return b"\x00" in data[:8000]
+
+
 def get_changed_files(cwd, base, target, staged, files_filter):
     # target is None -> compare <base> against the working tree
     args = ["diff", "--name-status"]
@@ -168,32 +180,47 @@ def get_changed_files(cwd, base, target, staged, files_filter):
 
 
 def get_file_content(cwd, base, path, staged, target=None):
-    """Return (old, new) content of a file.
+    """Return (old, new, is_binary) content of a file.
 
     staged:            old=HEAD:path, new=index(:path)
     target is None:    old=<base>:path, new=working-tree file
     target not None:   old=<base>:path, new=<target>:path  (commit vs commit)
     """
     old = ""
-    ref = f"HEAD:{path}" if staged else f"{base}:{path}"
-    stdout, rc = run_git(["show", ref], cwd)
-    if rc == 0:
-        old = stdout
     new = ""
+    binary = False
+    ref = f"HEAD:{path}" if staged else f"{base}:{path}"
+    raw, rc = run_git_bytes(["show", ref], cwd)
+    if rc == 0:
+        if is_binary_bytes(raw):
+            binary = True
+        else:
+            old = raw.decode("utf-8", "replace")
     if staged:
-        stdout, rc = run_git(["show", f":{path}"], cwd)
+        raw, rc = run_git_bytes(["show", f":{path}"], cwd)
         if rc == 0:
-            new = stdout
+            if is_binary_bytes(raw):
+                binary = True
+            else:
+                new = raw.decode("utf-8", "replace")
     elif target is not None:
-        stdout, rc = run_git(["show", f"{target}:{path}"], cwd)
+        raw, rc = run_git_bytes(["show", f"{target}:{path}"], cwd)
         if rc == 0:
-            new = stdout
+            if is_binary_bytes(raw):
+                binary = True
+            else:
+                new = raw.decode("utf-8", "replace")
     else:
         full = os.path.join(cwd, path)
         if os.path.isfile(full):
-            with open(full, "r", encoding="utf-8", errors="replace") as f:
-                new = f.read()
-    return old, new
+            with open(full, "rb") as f:
+                head = f.read(8000)
+            if is_binary_bytes(head):
+                binary = True
+            else:
+                with open(full, "r", encoding="utf-8", errors="replace") as f:
+                    new = f.read()
+    return old, new, binary
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +358,7 @@ def make_diff_viewer(old_lines, new_lines, filename, syntax=True, context=3, idx
     # columns stay aligned.
     return f"""<div class="diffv" id="{vid}">
     <div class="pane old-pane"><div class="pane-head">{old_label}</div><div class="pane-body" data-ctx="{context}">{os.linesep.join(old_rows)}</div><div class="pane-xbar"><div class="pane-xbar-inner"></div></div></div>
-    <div class="splitter" title="拖动调整左右列宽 · 双击重置"></div>
+    <div class="splitter" title="Drag to resize columns · double-click to reset"></div>
     <div class="pane new-pane"><div class="pane-head">{new_label}</div><div class="pane-body" data-ctx="{context}">{os.linesep.join(new_rows)}</div><div class="pane-xbar"><div class="pane-xbar-inner"></div></div></div>
 </div>"""
 
@@ -472,7 +499,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h1>Git Diff Report</h1>
   <span class="meta">{repo} · {commit_label} · {gen_time}</span>
   <div class="nav">
-    <button id="viewModeBtn" onclick="toggleViewMode()">完整对比</button>
+    <button id="viewModeBtn" onclick="toggleViewMode()">Full view</button>
     <button onclick="toggleSidebar()">Toggle Files</button>
     <button onclick="window.scrollTo({{top:0}})">Top</button>
   </div>
@@ -485,7 +512,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 {sidebar_items}
     </ul>
   </div>
-  <div class="sb-resizer" id="sbResizer" title="拖动调整侧边栏宽度"></div>
+  <div class="sb-resizer" id="sbResizer" title="Drag to resize sidebar"></div>
 
   <div class="main" id="mainContent">
     <div class="summary">
@@ -496,6 +523,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 {summary_rows}
         </tbody>
       </table>
+{binary_note}
       <div class="legend">
         <span><span class="sw" style="background:var(--del-bg)"></span> removed line</span>
         <span><span class="sw" style="background:var(--add-bg)"></span> added line</span>
@@ -645,7 +673,7 @@ function syncXbars() {{
 function setViewMode(mode) {{
   viewMode = mode;
   const btn = document.getElementById('viewModeBtn');
-  if (btn) btn.textContent = (mode === 'diff') ? '完整对比' : '只看变化';
+  if (btn) btn.textContent = (mode === 'diff') ? 'Full view' : 'Diff only';
 
   document.querySelectorAll('.diffv').forEach(viewer => {{
     const bodies = [viewer.querySelector('.old-pane .pane-body'),
@@ -716,7 +744,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("-o", "--output", default="diff_report.html")
+    parser.add_argument("-o", "--output", default=None,
+                        help="Output HTML file (default: securely-named temp file in the system temp dir)")
     parser.add_argument("-c", "--commit", default="HEAD")
     parser.add_argument("-r", "--range", nargs=2, metavar=("REF1", "REF2"),
                         help="compare two commits directly: gdhtm -r REF1 REF2")
@@ -803,17 +832,22 @@ def main():
 
     file_sections, sidebar_items, summary_rows = [], [], []
     total_add = total_del = 0
+    binary_files = []
 
     for idx, (status, old_path, new_path) in enumerate(files):
         display_path = new_path if status != "D" else old_path
         anchor = f"file-{idx}"
         status_label = {"M": "Modified", "A": "Added", "D": "Deleted", "R": "Renamed"}.get(status, status)
 
-        old_content, new_content = get_file_content(
+        old_content, new_content, binary = get_file_content(
             repo_root, base_ref, old_path if status != "A" else new_path, staged, target_ref
         )
         if status == "R":
-            _, new_content = get_file_content(repo_root, base_ref, new_path, staged, target_ref)
+            _, new_content, new_binary = get_file_content(repo_root, base_ref, new_path, staged, target_ref)
+            binary = binary or new_binary
+        if binary:
+            binary_files.append(display_path)
+            continue
 
         old_lines = old_content.splitlines() if old_content else []
         new_lines = new_content.splitlines() if new_content else []
@@ -861,7 +895,17 @@ def main():
         f'<td class="num" style="color:#cf222e">-{total_del}</td></tr>'
     )
 
-    import datetime
+    if binary_files:
+        binary_note = (
+            '<p style="margin:12px 0 0;font-size:12px;color:#656d76">'
+            f'Skipped {len(binary_files)} binary file(s): '
+            + ", ".join(html.escape(p) for p in binary_files)
+            + '</p>'
+        )
+        print(f"WARNING: skipped {len(binary_files)} binary file(s): {', '.join(binary_files)}", file=sys.stderr)
+    else:
+        binary_note = ""
+
     html_output = HTML_TEMPLATE.format(
         title=repo_name, repo=repo_name, commit_label=commit_label,
         gen_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -869,11 +913,20 @@ def main():
         sidebar_items="\n".join(sidebar_items),
         summary_rows="\n".join(summary_rows),
         file_sections="\n".join(file_sections),
+        binary_note=binary_note,
     )
 
-    out_path = os.path.abspath(args.output)
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(html_output)
+    if args.output:
+        out_path = os.path.abspath(args.output)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(html_output)
+    else:
+        # Produce the report in the system temp dir (TMPDIR or /tmp) under a
+        # secure, randomly-generated name via mkstemp, then keep the file open
+        # for writing through the same descriptor (avoids chmod/rename races).
+        fd, out_path = tempfile.mkstemp(prefix="git_diff_", suffix=".html")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(html_output)
 
     print(f"\nDiff report generated: {out_path}")
     print(f"  Files: {len(files)}  (+{total_add} / -{total_del} lines)")

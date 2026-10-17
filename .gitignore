@@ -1,0 +1,6 @@
+__pycache__/
+git-diff-reports/
+git-diff-report-*.html
+*.tar.gz
+*.mbox
+软著材料/

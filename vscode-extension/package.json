@@ -1,10 +1,11 @@
 {
   "name": "git-diff-html",
-  "displayName": "Git Diff HTML Report",
-  "description": "Generate side-by-side HTML diff reports for Git repositories, plus a C/C++ color theme.",
-  "version": "1.0.0",
+  "displayName": "GitDiff HTML",
+  "description": "Generate side-by-side HTML diff reports for local and Git repositories, plus a C/C++ color theme.",
+  "version": "1.0.5",
   "publisher": "symthosm",
   "license": "GPL-3.0-or-later",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/LuHaoran1981/GitDiffLocal.git"
@@ -13,7 +14,7 @@
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other",
+    "Visualization",
     "Themes"
   ],
   "keywords": [
@@ -27,6 +28,7 @@
     "theme"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:gitdiffhtml.generateReport"
   ],
   "main": "./extension.js",
@@ -73,7 +75,7 @@
       {
         "label": "Symthosm C/C++",
         "uiTheme": "vs",
-        "path": "./themes/symthosim-cpp.json"
+        "path": "./themes/symthosm-cpp.json"
       }
     ]
   }
