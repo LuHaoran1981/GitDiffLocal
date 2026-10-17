@@ -139,6 +139,16 @@ def run_git(args, cwd):
     return r.stdout, r.returncode
 
 
+def run_git_bytes(args, cwd):
+    r = subprocess.run(["git"] + args, cwd=cwd, capture_output=True)
+    return r.stdout, r.returncode
+
+
+def is_binary_bytes(data):
+    # git's own heuristic: a NUL byte in the first 8000 bytes means binary.
+    return b"\x00" in data[:8000]
+
+
 def get_changed_files(cwd, base, target, staged, files_filter):
     # target is None -> compare <base> against the working tree
     args = ["diff", "--name-status"]
@@ -170,32 +180,47 @@ def get_changed_files(cwd, base, target, staged, files_filter):
 
 
 def get_file_content(cwd, base, path, staged, target=None):
-    """Return (old, new) content of a file.
+    """Return (old, new, is_binary) content of a file.
 
     staged:            old=HEAD:path, new=index(:path)
     target is None:    old=<base>:path, new=working-tree file
     target not None:   old=<base>:path, new=<target>:path  (commit vs commit)
     """
     old = ""
-    ref = f"HEAD:{path}" if staged else f"{base}:{path}"
-    stdout, rc = run_git(["show", ref], cwd)
-    if rc == 0:
-        old = stdout
     new = ""
+    binary = False
+    ref = f"HEAD:{path}" if staged else f"{base}:{path}"
+    raw, rc = run_git_bytes(["show", ref], cwd)
+    if rc == 0:
+        if is_binary_bytes(raw):
+            binary = True
+        else:
+            old = raw.decode("utf-8", "replace")
     if staged:
-        stdout, rc = run_git(["show", f":{path}"], cwd)
+        raw, rc = run_git_bytes(["show", f":{path}"], cwd)
         if rc == 0:
-            new = stdout
+            if is_binary_bytes(raw):
+                binary = True
+            else:
+                new = raw.decode("utf-8", "replace")
     elif target is not None:
-        stdout, rc = run_git(["show", f"{target}:{path}"], cwd)
+        raw, rc = run_git_bytes(["show", f"{target}:{path}"], cwd)
         if rc == 0:
-            new = stdout
+            if is_binary_bytes(raw):
+                binary = True
+            else:
+                new = raw.decode("utf-8", "replace")
     else:
         full = os.path.join(cwd, path)
         if os.path.isfile(full):
-            with open(full, "r", encoding="utf-8", errors="replace") as f:
-                new = f.read()
-    return old, new
+            with open(full, "rb") as f:
+                head = f.read(8000)
+            if is_binary_bytes(head):
+                binary = True
+            else:
+                with open(full, "r", encoding="utf-8", errors="replace") as f:
+                    new = f.read()
+    return old, new, binary
 
 
 # ---------------------------------------------------------------------------
@@ -498,6 +523,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 {summary_rows}
         </tbody>
       </table>
+{binary_note}
       <div class="legend">
         <span><span class="sw" style="background:var(--del-bg)"></span> removed line</span>
         <span><span class="sw" style="background:var(--add-bg)"></span> added line</span>
@@ -806,17 +832,22 @@ def main():
 
     file_sections, sidebar_items, summary_rows = [], [], []
     total_add = total_del = 0
+    binary_files = []
 
     for idx, (status, old_path, new_path) in enumerate(files):
         display_path = new_path if status != "D" else old_path
         anchor = f"file-{idx}"
         status_label = {"M": "Modified", "A": "Added", "D": "Deleted", "R": "Renamed"}.get(status, status)
 
-        old_content, new_content = get_file_content(
+        old_content, new_content, binary = get_file_content(
             repo_root, base_ref, old_path if status != "A" else new_path, staged, target_ref
         )
         if status == "R":
-            _, new_content = get_file_content(repo_root, base_ref, new_path, staged, target_ref)
+            _, new_content, new_binary = get_file_content(repo_root, base_ref, new_path, staged, target_ref)
+            binary = binary or new_binary
+        if binary:
+            binary_files.append(display_path)
+            continue
 
         old_lines = old_content.splitlines() if old_content else []
         new_lines = new_content.splitlines() if new_content else []
@@ -864,6 +895,17 @@ def main():
         f'<td class="num" style="color:#cf222e">-{total_del}</td></tr>'
     )
 
+    if binary_files:
+        binary_note = (
+            '<p style="margin:12px 0 0;font-size:12px;color:#656d76">'
+            f'Skipped {len(binary_files)} binary file(s): '
+            + ", ".join(html.escape(p) for p in binary_files)
+            + '</p>'
+        )
+        print(f"WARNING: skipped {len(binary_files)} binary file(s): {', '.join(binary_files)}", file=sys.stderr)
+    else:
+        binary_note = ""
+
     html_output = HTML_TEMPLATE.format(
         title=repo_name, repo=repo_name, commit_label=commit_label,
         gen_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -871,6 +913,7 @@ def main():
         sidebar_items="\n".join(sidebar_items),
         summary_rows="\n".join(summary_rows),
         file_sections="\n".join(file_sections),
+        binary_note=binary_note,
     )
 
     if args.output:
