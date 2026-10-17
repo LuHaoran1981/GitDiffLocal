@@ -1,5 +1,5 @@
 git-diff-html (1.0-1) unstable; urgency=medium
 
-  * Initial release.
+  * Initial release. (Closes: #1148520)
 
  -- Lu Haoran <luhaoran1981@icloud.com>  Fri, 18 Sep 2026 12:37:59 +0800
