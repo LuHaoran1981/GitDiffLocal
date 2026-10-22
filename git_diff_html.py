@@ -385,6 +385,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   /* Top bar */
   .topbar {{ position:sticky; top:0; z-index:100; background:#24292f; color:#fff; padding:10px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; box-shadow:0 1px 3px rgba(0,0,0,.2); }}
   .topbar h1 {{ margin:0; font-size:16px; font-weight:600; }}
+  .topbar .brand {{ font-weight:700; font-size:14px; letter-spacing:.6px; padding-right:14px; border-right:1px solid #444c56; opacity:.92; }}
   .topbar .meta {{ font-size:12px; opacity:.75; }}
   .topbar .nav {{ margin-left:auto; display:flex; gap:8px; }}
   .topbar .nav button {{ background:#373e47; color:#fff; border:1px solid #444c56; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:12px; }}
@@ -496,6 +497,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <body>
 
 <div class="topbar">
+  <span class="brand">Symthosm</span>
   <h1>Git Diff Report</h1>
   <span class="meta">{repo} · {commit_label} · {gen_time}</span>
   <div class="nav">
