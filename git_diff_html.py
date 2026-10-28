@@ -31,7 +31,7 @@ Usage:
                               (exactly two file arguments; works outside a git repo, too)
 
 Options:
-    -o, --output FILE   Output HTML file (default: a temp file in the system temp dir, e.g. /tmp)
+    -o, --output FILE   Output HTML file (default: a temp file under ~/git-diff-html/)
     -c, --commit REF    Compare against a specific commit/ref (default: HEAD)
     -s, --staged        Show staged changes (git diff --cached)
     --no-open           Do not auto-open the report (opening the browser is the default)
@@ -369,6 +369,133 @@ def make_diff_viewer(old_lines, new_lines, filename, syntax=True, context=3, idx
 # HTML template
 # ---------------------------------------------------------------------------
 
+_LOGO_DATA_URI = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAJgAAAAcCAYAAACd43bvAAAaw0lEQVR4nO17ebhdRZXvb1XVHs50"
+    "5yQkBEJCIIEEQUARUJLggNCNgHhvo09t1Pf0qaAPURGney/dKLaKrbStiCIN2uoNHZ+oCC1toIFm"
+    "MCBDEkJMSEhIQoY7nWmfvWtY/cfZ++bkcsMjUbTf+976vv2dc2pYVbXqt1etWmsdwkHQkv6V6p7B"
+    "ZeYVn/q3d6HU/T2rawZSKJYCEBKQElAECAFIAUgClAIkgWVWJqAkuYrXhfdVbhz+7JqPnkpfElu4"
+    "3wkahDuYeWU0NDQke3t7iYjMH8Ln/9MfTuoP6eyYTpUgDw4CgiQxgUHNSiYABAKBIQBOy1oeZkAb"
+    "y8vod7NwSOcPlvSvOBOLljEDRM0eB0zMLIjIZr937txZXDt9emPZf3GwpfOe8sV6sbr/6iQOptM9"
+    "A0stADjmV7k4BpwDrAWMA1kLWAMYC1gLthaUfodN602zjbFAlxulQyrrDNoLr/tx2/u/QX2w6Ic8"
+    "mHllGzE2VntVHOtvG2Mf6+7u2fiahnldWn9QfF9u+n8VXMDBAIyZQMQnXHr7NDJYyEkMWCvIcQo0"
+    "B3IMsAMsA9aB2YEsA84ClkHMENYhdgqz9VYcap9XcU2YQ9rtB5/7u3kX0yAM9x+Yds02olpvfKJY"
+    "DB7yffUBKcXxUorpSin/gNf5JyJmlkTknts5fNrtt68PpqrbtWv0xGeffbYzLaM/z0wPjg4YYL19"
+    "ywUAJMzHCeUXWWtHDsTWNQGWggwZoBwDlsEuA1mzXjgLbRUWJOsRcgWGlTSJtd1F9+31V81/JQ3C"
+    "cO9L02TZRlSrjXMKueDvpJQMoPVInHJTmFkws0yfF8iCmSmrH+IhOUUfYmZayayYWa1cuVK1AiBt"
+    "o9JHTMHXIyJbi6IPdXcUv3f22UfZFr6KiOxYtXpWe3vhl+Pp2AAyfnJ/YEvnqKYaez9rbG0rJ60h"
+    "W6+Ygrds5ZOuP3sIOAgbbNex0wgAhONXC1JwruHYkQC5puVEDgCByIFJIDW+AOIXfGcBvEKvAeBA"
+    "BNIGFAYIZnXYoVXXnHQyokcq/f0Qgy/R6Pd9cWk6iAUg4yT5ZkPr22rOPZo22YfPFEcPocX2I6KM"
+    "14v1AfYF84SWabUF03JBRK6Fr63X47/Khf43Y60fnXQpMSPl8mtLudxPmdEo1+smHdtN4kkpv2xc"
+    "2k87AYCztmmZTOf4Avu0Za5uclkr75a1Tn6pwcx0wACbvnZ3czEOp8BkGsoBJAFYEEkwHGCbJj6T"
+    "bU7HMhjctN4t4EDI2QiL7NMAvOZVgCDi2JlCQc6fa0Zupk/hPO6HGpxA5tSUbaQQYg6aIPGMtevC"
+    "ILgkW2iLMAEAq5n9o4ETALAHoAGM5Ig2tr69VWB6ETg8HVsCWBUBs3PAdADYiq2rH1z+YPKX553X"
+    "C+Yj4WjjM8/8fgURJQBQLtdPV744g4FIN/jnRLQRzBQ1GnPCMJxWazROCHz1bQAsgBwzn5yOs3Vs"
+    "bGxGMZe7XQiRM8aMvvaYY6pjtdpJvpRL4RA6gceLYfhLIuJJm8yj1eoJoe+/hp3rYRa74yj+DyJ6"
+    "MpNF2kcQkd2xY8f09q6uZbA8HwKGLdY+/viuu4goYmYvSZJFvu97AAwR/W40io7wid4iIQr1pHEf"
+    "Ed0LAKtWrfKOPe64C8B8FBxtfu65Z28lovhAz3MCwCe9/3ovxqFPiyA317JxUEJASpAUYEnpZ+aO"
+    "kGBJgFAgSWAlICQhkT66RBm36YvRxePQUKAUQ8xswqJSO3ajf9YVz1zF/UsUDd6z31tgJjRtzGNK"
+    "yuPQtAAbcZR8+Be/+P2P+voWJy1tFQC3Zs0adfSCBY96Si0CAGPttsd37jz6pFmzIgCSiEySmH/x"
+    "PPlWALDWbl2xYsXcC3t7vyeAvwaAahRdHij/jZ4n35zxN8Y+9PTT694wb/78ywLfv0pQU8TWuUot"
+    "it7eXiz+shHH3wp8/39OsRQHQGhrP1et1kc620vfBMDG2q1JrJeHof9RIcSEUki0/rfy+PgFPT09"
+    "NSJyu3fvntXe3vlNKek8IcTE3lrrnHNuaNeu+iWzZ7cPZy9bNYreF3r+NVKKntZJaGOersXxOzoK"
+    "hcetc8NSiHZj7XCl1risVAi/pqTsztrGsR7YsGH9VxcsWHiHUvL0ibkZ89Dw7t3nHpgN1t9PTabd"
+    "R4LpcKdjkHNE1gHOommHMdg6kNtr5JNjEFtwao/BWiTWwzy7GT08sg+4AABEMomsmd7Bg5u+MO8c"
+    "GrzHrHxxo18CgLH2DjTtSi2AfC7n33TBBQsfjWN9Tb1efy3QL9JjSC5evDhJjPlqJicl5aFHd3S8"
+    "iYiYiMy2beUeIegN6abDGPOdvr4+C+eyc9+Evn91C7gYgFFKnnLk/KPuDFvABSCRQpQKYfi9/v5+"
+    "QWIfsbdqZtFcPvnEXE/rrCA6LJ8PL28BlwGQ+J73+mJb2+eJyJXL5WntHR2/8Tx5vhBin+NRSsGe"
+    "py6aMaNw5/o9e9oAuEoULSuE4XcngwsAPKUWFIPg3h2jo7NJiAoAJlCpVAj/qQVcGgArJT43/6gF"
+    "reBiAImv1CldPT1fOiCALbl7adPQA50gZSjZOkuOKTPkkYHKMTj7nZZNXAKsg3AO2gksck+DEMNN"
+    "umsQQM5BgJ2b0ca3PNW/4IhlzZvl/uZrmVlsrVS+kBhzL4CwyQZWKbnI99UVuVzuXm0+92g1ii4m"
+    "Is3MVCuXlxtrnwfgAUDoBRdnDNs61VlSijYAcM5FURT9EAAghE15OyVlaKx9uJEkX3PO1dC0aU0Y"
+    "+KcxcyVJzLXG2lUAfABaSjnjYx/72KsT7f7dWnersXZDygvW2jFjzE+cc/9inXuMiHJpHQshyDlX"
+    "i+PkOq3NTc45ieZL5Twp+wDAD4JBT6kFABoApNb2tljry7W1K9O2DaXkSYcVSlcSEXtSvi8Fg7XW"
+    "7qxE0ZI4jnuttXuaa8b3fRcYNEFPUgpPSUmx1t/XWv8ok5mUkgJfnW6sXdVIkmuttZW0zkoheg9M"
+    "gy1NAWDxGnIArGNOQUQTYLKYcFk4l9poFmSbswY7sGUIq3mRW2cAMgx+wQPAJQnrnM8dM7uSfwb6"
+    "hRiE4yluhJntcXRPT3nnjh1nxbG+0lq3OhXsBAiVlMcXwvD7UayvISKeMWNG1Vj+fipEKwS9aWSk"
+    "PgcAAt/vSzdAGGvv6Ozs3ISm5DONo6xzY9tGRs7PBcHHjHFfS8sNANdIks8EgXf5aK3235xzSQYW"
+    "P5c7sZQPfqSU7NWJuTObnDF2g+d5F0kp3xZ63gqhRCmtcgCQJMllYRh8xPe992hrf5KuTYCo/bld"
+    "u45WUr41bRsmWv/K99V5oe9f6yv1+hTkAQCnPPlONCfjp+tzAJRknnbbhg237RobO2OkWj0uCLxL"
+    "4nhslK3zMjEnif5F6Pvv9X3/HcaY1dj7cpR37SxfmAuCy5PEfClbq5KyeEAAuwd3N1Uvu5NZJyDH"
+    "1DzyGJQ+cK6prSxSd0V6EXAWlB6dxhI6UaXTC5sVCqEqFIQKC3LSI1SuKAMQifZD5KnD195865P9"
+    "x/ronVqLERGYWR1++OFRGPrXPPbY704sR9FpjSS5ylibgc0AMKGvrhgfr72GmSmOat+z1sYAIKXI"
+    "5YrqLatXr/YF8IZMgI0kuWGKIQUzP37E9Ok7mFlpHT+YlnvOOYpq+i5mVqvu3/msY96OpnYjo3WQ"
+    "Xf3TTc9WkLkIQmYWvPfo9J1ztZER/dMJN4Llf816MbNTwltERBNHnTX8g/RiUwTA1rmhbC0EmrVl"
+    "bKxLJ/ZGNF8sT0rZnc/nb33rwmN29nR0DAaedxgA+L4v0XKEO8IvM5cFA49MyAFYe+ihXVuarhV+"
+    "ICsHwIp5ah/RZBoY6KeBwUE+tfeGrqpxi1jEIDgBauqUNDIEkGi6KgjNGyVx6rJA2sAwAp8CXd5t"
+    "KsPfKjsfTT38Qtw4AILAVHVOKRmWtTeNlmMbcxNPk5ozEZlqtXo8s5xeKuV+DeABAA+s3LTpi6fO"
+    "mvXlwPcvARADkEHgnUFEDwLYmCTmNinRC4A9Ic6fPWfOHillnplhndvw+0Lhrsm3UAAw2lbTC4bR"
+    "WtfTYslAnM+rWtPeY2utq7f2y67+9XqjdQ0OU9+WyTlXLZe3xbNnH2uYGfV6HLWu21OkhBAi5QEh"
+    "RA2A2L59u2Nm2dC6lrUFQB1CTC8Wc3fUao3eIFAfl1KeAgBSig4J9HpS9jbi+LrVT/qXd3XtxYeJ"
+    "TZV83wKAtnZiTda6CTkwczY3AkBqio3aD13FgwCO1N0LcoHs0IlxpISAaY4vyYGJQKmLpCkpAiDA"
+    "cGlM0gKkrCd9VW7498785FP9L23sfal1zsxMGBig6sc/3uN5wQeVJz8F5mSkUnltV6n0JAAsmzu3"
+    "MVyu/zjwcUnWDQKZ6kejkVznebleNH1IpxZyufkAHBEJbczNJyulmTnEJJ8Ys5vwQSml9vrPBDiX"
+    "y6WGNrEQPLWMxd51SCXyKfBiAChXq60vPg23/LDWTtQRoOIk2emcqwkhCgDA5E4nop8BqKfre+3E"
+    "iMDY8LB9HgCeemr17aVpsx+d1VXIeUFwoZLyHVKIeQAo8P1Lj1zQWCFEWAEwDQCcc1MroxZfnAb2"
+    "ChaAeuLqxTOeGdP1gnjx43I06Zad/rD92407l2o1HdrWHUgKIoJlD1WdRwALBwkQg4ibPjCiVMNZ"
+    "gCSYDOAAadzD3L9E3XTEUnXx5rtfWiB68B47RRBc0uCgqVxxxZlB4A2ka2xry+fvi+L4RmvtY8Si"
+    "IwjUB1v6CKvd6qZsWBHhPq3NKqXUSUKIQKS+L2tdPB5Ft6R9/ujxQCIaTflaQXTUWKXyDvK8VUkl"
+    "JmZO/k/90ZRFbtP27eumd3U9DOBMANpX6sP1ery6kkT3t4f5v/A82QcgAeA7x/cecURHOYrii5WS"
+    "XwRQq9drZ4e+f1W5XHu8VMr/b6Q3REF8WPr9oElN86OvLJhrz43jRoMEyf3qMxoGGBia/vWSgQeA"
+    "VXa6CmHxmWcuxm/Kr0RnEMGk/lsi0QTWhK3tQBCC4wik7cP0N/eY3qEP83sGB+2UY74EStWyWLNm"
+    "zYqjFy78jSflmQCMFKIkff9/TWquAQTGmCd27dpxZ+rdJoA41vV/UErdhNR6BOBZZ++c2dm5ObWX"
+    "MoA57PVYt8671ZM9+YVp9ZZPANUZvh8+rgCghRCyvVj8obXOhB3y6nq1/uyL8MvGcszMpJSJY/fp"
+    "fF4+CMATQohczv8n31eJlMJP2/rWWhPH9jPr169TRy9YcJ1SsggAhUJhnTHmGRB1pzJS1jluJI0n"
+    "irnAE0Kk4/PkI/3F5MAASIxX5WXaYFepXcwIJfcUAu4p+FM8XvOzJ6wFhwSjOCQcw8xgFDOCMcwM"
+    "RnDNvBsxx3sede1BZIZ96gdrxiQBOMcEEq5RrXimvBoAlvf2/jE0Ay9evDjZUa2+LdF6BVKDeop2"
+    "njHmt3v2VM+fO3duIy0zzEyV8fFbrXXbW/tq574zRbyvlLZRzOho5Z2VC4gi9o3zdmV1RJQHAGb2"
+    "nsoHd8SJvgtNY18AgJRCCSEodVOo9OlRUu49FglBWu4rpYLZbdO6CgX/oShK3m2tqyJ9o1NwAYCy"
+    "1o1W6vW+UilYvXjx4qSh9dnG2t3NdlJIKedLITrTdVCi9RX33HXXagbmtMy9NRhfbJnfVHLwACi1"
+    "cHD9nvVXH3v+YTL6rRLwY50aTvslgckmdmw8TA9G8ZUjv4t3r/sEnAWIbBPCEGBiNP0U0pHvSWfM"
+    "use+eM7uLDNj/2O9NMrCJemRc2GlEi31fXWhlOIEgDsBipxz641xt9+y9smhD5x8sk7bu1Q7ebNm"
+    "zarV643vSul/HoC01j6zOQh+vag5RDPACsAY/qUQbhQAtGsesyltMcZdDzg4QEc1VckqtLU3ENOs"
+    "9PvDaTGfTGRWbtp07qkzZ14qlDqHGN0AosSaJ6zF8865651zMMZUom3bJo5MY3htcyywdcYC8Uga"
+    "+rllbCx6IMiJ/+FJdRqDO8AYNcbeG0X2O11dbc+2xCTvGx6un1Qseu8Xgl4HQheABjteW4sbN3eW"
+    "Sr/ZsmVLzjpcy860AQLMdmK9zvCdRrhGc01mXVZugW2Uzs3BEWVhmK1fnP/O2dPsLXHDGhxEjNKw"
+    "RMEr45btb8ZnN/81OsM6rFAT2avNbFdhVKlD6cb4t9Z+6cwPZZmxBzrW/mhSsPdF29EUwE4S83PP"
+    "k38JAI0kGcwFwUCa1XBQc5zq5gkA/f39YmBgAJgUfH4J/F4QsH4p42U0NNTMCOltnhovKif+I+Wh"
+    "CRq8x3A/1GFXbvjBnjH8fVCQipkPWKCKLOq6hHfN/Fe8fdrdGIkLUGxSHxhPOGLZWJCb8JX8USkN"
+    "87iWNBkC9ga7J6fTbNtW7qlH0dfrcXxRHOtvp+Ay1ro4qtkb07YvEHJL6kqWdiOytJe03MuCyZNS"
+    "WjxmFoODg64lqwKT2hDvm9qT8ZzIxOjv789SZiafNPverveds+zt7UVfX59Nx6WW1JvJ65EZuHjf"
+    "VJ7JaTxTpu209mlqqkFYHoKkNe++fEzdfGJ7UZ4R1ZwV4sAySwUxEhvi83N/gKfrh+KJxpEo+TEs"
+    "FFK/m3RR1TmXPAoA92Dpy5KpOfktnpx2k26a6ewOP5ALvI8A+EhaFQMItDZf6urKb2nVCJlwx8fH"
+    "59199+ZtCSenAHiMiMZbhjK7qtWZRLSj2bb2FiK6bbRaPcE2aDcRbQOA8UbjKKH5sGIxvB+ASDMX"
+    "QiJqZFGJLVu25Nra2mYODAxsrlSiM4noN8PDlUVCqFpnZ27zokWLaMmSJflyozFbGD583bo1K9MQ"
+    "2Cn1ZmrPIwBQr9cPF563iIh+BQCR1meFSt1HRJlvbGIP9pOeNKWymSolqIXHRJ+9iOyHwAD4qasX"
+    "HnJEe/yor3iG1sxEB5aU6FggkA1sjmaib82VqFMennJwQjoKQsGstzbYHrXhunNiTMq/+lNQBpR1"
+    "69YVjzxy/ibPU92t9bHWP3ng/vvfuXTpUkbTFzahZYjIRnH8c2Zs9pU83jI/7IxbmyT6+ba2wh1E"
+    "5Kr1+nUA9ggpnybQALP7kST5FwBWVSrRdT09bU/VG41/EBCnM7u1e0arP50xveMdnpS1JNFtjzyy"
+    "6qLTTjst2r59zzEdnaWfxjq+Ukn1eZOYq/KF8AuVcu3T3d0dP9u+fXvY1tH1Wd+TvY0kuUywrAuB"
+    "s/3Qd1bbbWHof2NoiOUFF5jzLPOFOuYvkMSJSomPSRI/rzXiNaN7dv6s5bLzstAEeGgQDsshjv3s"
+    "uh07q+LtlglSwjEfGAAEOTRsDvMKW/GFeTchNjILhLMgBRj7+IbrzonRO7RPGOJPRRlgFi5cWI8i"
+    "fW4jMV/R2i7XxtxQj+MLQ9+/aNmyZQb7gksQkS03GgsJ6HbGbmUgZOsK1tpDjDGl7Egp5vOXxtr9"
+    "NtF6hBm3SCE/bJy7KzFmbRDQ8MaRkfYk0YcxXMSMafmcPw/MdSJ6V6J115w5cwoA0NFZvFEQ3Rf4"
+    "/plKyLuDwD+bme7K5XNf3rBh26Fq1iwBx084555PtI5+9auf32fY3s3WdTNzBQBOPm3PfOtwuSQ6"
+    "2bK+MNFJF9g1jDE5rZOe8fHxl/0/CvtoJ+qD5f4lau6VG+8eroqPezmpQHzAPiqZ2mNv6nkIl866"
+    "DSNJHtJpJiaQMQ8BwJI0M/bPQamtZtvb8w/kAu8Tvq/6fM97fyEMV0xK3tuH2JjX6MQsr9Uq/yiI"
+    "dsrA/9nYmL4+nw8e2rRpU8fQ0JAsV6tfJ9j5pmHgKfFG31Nf9ZXqYLavK5VKu+Z1dkaJdtcTSDE7"
+    "EyfJTmNcWxTFf0tCeKOjo9nNbAWItSc9ASGMlF4M5sBYvtWfVqzmgYLve2d4yntVMZ9f+sazzv6c"
+    "YNkQnloDNN0J82ZPe9oavlxbu/K5nTv+ORf648xUEEpoz1cbTzjhhNrLvQkvOP4yo3/WJzdeOzzG"
+    "Pw4P0ugXZNEwRXzksJ/i7I7fYiwuCKHrcMDDwN7M2D8ntRiq2aVATgWsTDtJoQ71PO8VnZ1d64yx"
+    "7LT+x2nTcsuFkF/Jt7cv7uvrc7mg8IvAC84lhW7nnK3UIqGtgRLSY2Zas2YNCnl/aazNXda6Bwu5"
+    "8KRE61UMlBr15KOLFy+uMjO1F4tf9pQ6plar3Jg0ks4oSv4exMePjVS/MaejY7REtDOxeiXApLWu"
+    "dbQVr7asj3bW5okQMLPcsaMy3fPoPZ6Ur581bcZfgfE345XaZUmip/vK+yQAuJf5n1ZT21cDsMwQ"
+    "j2wr/fdqFWvDnFDOsWaGfakPGNYxrHXSfvHIG82cYBeP1VytC+NPAsDyY9f82QGW3soMEdnsc39t"
+    "mZmK+fDqMPTf4xhbg8B/izFuJZH3qSDw3zajq+s+AOx59Gtj3QZmToQQOSEgBchncJ6IeNGiRbqQ"
+    "y30yDP03CEFtjnmcmQMlxRmFgt+eTY2ZAyHE83EcP+356tRyVM8R0R5VkgoAxscbRwmIDzUSfUei"
+    "3fp6o/HeIAgOEaDzhaD3jo5WF+mcNY5hLfN/dHW0XW0df72jvXCclIIN+EOptn5Z92E/qS9gDABn"
+    "ffWJ2raKd2EjQTlXkl4YChnmXvqTz5H0gkB2l8rqplfeLKfT6LP3feddO5hBGBz8v+2/foKZg0aS"
+    "3MBwD6R2WQ88cLlWO78aRe8DgGoUnRX48mQpxOHW8OOAcEy00zr379u2bcu8+IEgioXwxjxPVj1P"
+    "jhNRZGnC/0hEFDcaje+0tbd/07Hb0FnKDVTKjU/kZHB8FEVzjXGNhnaflkTVWtmtJJKhM+YxZqyy"
+    "lq/v7Cw+eXhHx0jgq+udc3bVqlWeY7s58LyvCaLZ0Xjw3PLmDfZl3Yf9OlRpEI6HIKlv/bpN18y7"
+    "aIaiN9Vr7AiZ76UVmy797TAZswQHizY3t7RefPTQWx99OwAM/Olvj38IZUZ+td64zpPikC2+f8nR"
+    "zf9gPkTGXhv6Qc7o5LKVK1cqZ927NfDJ0A/fbNkW4dwrLbPxPF/6+bZTiGglN0N6HgQfKpzQDg4M"
+    "LkmWFgAGBsDVav0KEuL17DD0xJ5dPzxxxozblVKfAvgonfB7urtzm5h5Wz1qfE6pWpwPO64FAGPM"
+    "UUgvKBtHRtoTY77hHH614JhFg77nvXq0Wj2+4Id97R3JHUtrupeZnwemtjn/GPSfbU0QfXr2jVkA"
+    "AAAASUVORK5CYII="
+)
+
+
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -387,7 +514,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   /* Top bar */
   .topbar {{ position:sticky; top:0; z-index:100; background:#24292f; color:#fff; padding:10px 20px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; box-shadow:0 1px 3px rgba(0,0,0,.2); }}
   .topbar h1 {{ margin:0; font-size:16px; font-weight:600; }}
-  .topbar .brand {{ font-weight:700; font-size:14px; letter-spacing:.6px; padding-right:14px; border-right:1px solid #444c56; opacity:.92; }}
+  .topbar .brand {{ height:26px; width:auto; display:block; padding-right:14px; border-right:1px solid #444c56; }}
   .topbar .meta {{ font-size:12px; opacity:.75; }}
   .topbar .nav {{ margin-left:auto; display:flex; gap:8px; }}
   .topbar .nav button {{ background:#373e47; color:#fff; border:1px solid #444c56; padding:4px 12px; border-radius:6px; cursor:pointer; font-size:12px; }}
@@ -499,7 +626,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <body>
 
 <div class="topbar">
-  <span class="brand">Symthosm</span>
+  <img class="brand" src="{logo_uri}" alt="Symthosm">
   <h1>Git Diff Report</h1>
   <span class="meta">{repo} · {commit_label} · {gen_time}</span>
   <div class="nav">
@@ -806,6 +933,7 @@ def build_html(entries, repo_name, commit_label, old_label, new_label,
 
     html_output = HTML_TEMPLATE.format(
         title=repo_name, repo=repo_name, commit_label=commit_label,
+        logo_uri=_LOGO_DATA_URI,
         gen_time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         file_count=len(entries),
         sidebar_extra='style="display:none"' if sidebar_collapsed else "",
@@ -817,20 +945,51 @@ def build_html(entries, repo_name, commit_label, old_label, new_label,
     return html_output, total_add, total_del
 
 
+def _report_dir():
+    """Directory for auto-generated reports.
+
+    Uses a visible directory under $HOME instead of /tmp or an XDG cache dir so
+    sandboxed browsers (e.g. snap-packaged Firefox) can still open the file:
+    snap's `home` interface only grants access to non-hidden files in $HOME, so
+    dot-directories like ~/.cache are not readable by a snap Firefox.
+    """
+    d = os.path.join(os.path.expanduser("~"), "git-diff-html")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
 def write_report(html_output, output=None):
-    """Write the report to `output` (or a secure temp file) and return its path."""
+    """Write the report to `output` (or a temp file under ~/git-diff-html/) and return its path."""
     if output:
         out_path = os.path.abspath(output)
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(html_output)
     else:
-        # Produce the report in the system temp dir (TMPDIR or /tmp) under a
-        # secure, randomly-generated name via mkstemp, then keep the file open
-        # for writing through the same descriptor (avoids chmod/rename races).
-        fd, out_path = tempfile.mkstemp(prefix="git_diff_", suffix=".html")
+        # Secure, randomly-generated name via mkstemp; keep the file open for
+        # writing through the same descriptor (avoids chmod/rename races).
+        fd, out_path = tempfile.mkstemp(prefix="git_diff_", suffix=".html",
+                                        dir=_report_dir())
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(html_output)
     return out_path
+
+
+def _open_report(out_path):
+    """Open the report in this machine's default browser.
+
+    Uses xdg-open directly instead of webbrowser.open(), because webbrowser
+    honors $BROWSER and some environments (e.g. VS Code Remote-SSH) set it to a
+    URL-forwarder that opens the client machine's browser, which cannot reach
+    files on this machine.
+    """
+    import shutil
+    import subprocess
+    if shutil.which("xdg-open"):
+        subprocess.Popen(["xdg-open", out_path],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return
+    import webbrowser
+    webbrowser.open(f"file://{out_path}")
 
 
 def _finish(html_output, out_files, total_add, total_del, args):
@@ -839,8 +998,7 @@ def _finish(html_output, out_files, total_add, total_del, args):
     print(f"  Files: {out_files}  (+{total_add} / -{total_del} lines)")
 
     if not args.no_open:
-        import webbrowser
-        webbrowser.open(f"file://{out_path}")
+        _open_report(out_path)
         print(f"  Opened in default browser: file://{out_path}")
     else:
         print(f"  Open in browser: file://{out_path}")
@@ -891,7 +1049,7 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument("-o", "--output", default=None,
-                        help="Output HTML file (default: securely-named temp file in the system temp dir)")
+                        help="Output HTML file (default: securely-named temp file under ~/git-diff-html/)")
     parser.add_argument("-c", "--commit", default=None,
                         help="compare against a specific commit/ref (default: HEAD)")
     parser.add_argument("-r", "--range", nargs=2, metavar=("REF1", "REF2"),

@@ -26,7 +26,7 @@ Suitable for code review, version comparison, commit review, and archiving code 
 
 This is a single-file script; no installation is needed. It only requires:
 
-- Python 3.6+
+- Python 3.7+
 - Git 2.x
 - A modern browser (to view the report)
 
@@ -71,7 +71,7 @@ Scan left to right: the **first argument git can resolve to a commit** becomes t
 
 | Option | Description |
 | --- | --- |
-| `-o, --output FILE` | Output HTML file path (default: a temp file in the system temp dir) |
+| `-o, --output FILE` | Output HTML file path (default: a temp file under `~/git-diff-html/`) |
 | `-c, --commit REF` | Base commit to compare against (default `HEAD`) |
 | `-r, --range REF1 REF2` | Compare two commits directly |
 | `-s, --staged` | Show staged changes (`git diff --cached`) |
@@ -140,7 +140,7 @@ Copyright © 2026 Shanghai Xiandao Zhijue Technology Co., Ltd. (上海先道智�
 
 本项目为单文件脚本，无需安装，仅要求系统已安装：
 
-- Python 3.6+
+- Python 3.7+
 - Git 2.x
 - 一个现代浏览器（用于查看报告）
 
@@ -185,7 +185,7 @@ gdhtm -s               # 暂存区变更（git diff --cached）
 
 | 选项 | 说明 |
 | --- | --- |
-| `-o, --output FILE` | 输出 HTML 文件路径（默认写入系统临时目录的临时文件） |
+| `-o, --output FILE` | 输出 HTML 文件路径（默认写入 `~/git-diff-html/` 下的临时文件） |
 | `-c, --commit REF` | 对比的基准提交（默认 `HEAD`） |
 | `-r, --range REF1 REF2` | 直接对比两个提交 |
 | `-s, --staged` | 显示暂存区变更（`git diff --cached`） |

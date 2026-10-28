@@ -1,4 +1,4 @@
-.TH GIT-DIFF-HTML 1 "September 2026" "git-diff-html 1.0" "User Commands"
+.TH GIT-DIFF-HTML 1 "October 2026" "git-diff-html 1.2" "User Commands"
 .SH NAME
 git-diff-html \- generate a side-by-side HTML report of Git differences
 .SH SYNOPSIS
@@ -7,15 +7,20 @@ git-diff-html \- generate a side-by-side HTML report of Git differences
 .br
 .B git-diff-html
 .BR \-r " \fIREF1 REF2\fR [" \fIfile ...\fR ]
+.br
+.B git-diff-html
+.BI FILE_OLD " " FILE_NEW
 .SH DESCRIPTION
 .B git-diff-html
 renders the differences in a Git repository as a Gerrit/BeyondCompare-style
 side-by-side HTML report with inline highlighting.  The report is a single
 self-contained HTML file that can be opened in any modern browser.
+Outside a Git repository, two files can be compared directly with
+.BR "git-diff-html FILE_OLD FILE_NEW" .
 .SH OPTIONS
 .TP
 .BR \-o ", " \-\-output " \fIFILE\fR"
-Write the report to \fIFILE\fR (default: a temporary file in the system temp dir).
+Write the report to \fIFILE\fR (default: a temporary file under ~/git-diff-html/).
 .TP
 .BR \-c ", " \-\-commit " \fIREF\fR"
 Compare against \fIREF\fR (default: \fIHEAD\fR).
@@ -44,6 +49,9 @@ Working tree versus commit abc123.
 .TP
 .B git-diff-html -r aaa bbb
 Commit aaa versus commit bbb.
+.TP
+.B git-diff-html old.c new.c
+Compare two files side by side, outside a Git repository.
 .SH SEE ALSO
 .BR git (1),
 .BR git-diff (1)
