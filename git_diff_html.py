@@ -31,7 +31,7 @@ Usage:
                               (exactly two file arguments; works outside a git repo, too)
 
 Options:
-    -o, --output FILE   Output HTML file (default: a temp file under ~/git-diff-html/)
+    -o, --output FILE   Output HTML file (default: a temp file under /tmp, served over local HTTP)
     -c, --commit REF    Compare against a specific commit/ref (default: HEAD)
     -s, --staged        Show staged changes (git diff --cached)
     --no-open           Do not auto-open the report (opening the browser is the default)
@@ -946,36 +946,36 @@ def build_html(entries, repo_name, commit_label, old_label, new_label,
 
 
 def _report_dir():
-    """Directory for auto-generated reports.
+    """Create and return a fresh temporary directory for an auto-generated report.
 
-    Uses a visible directory under $HOME instead of /tmp or an XDG cache dir so
-    sandboxed browsers (e.g. snap-packaged Firefox) can still open the file:
-    snap's `home` interface only grants access to non-hidden files in $HOME, so
-    dot-directories like ~/.cache are not readable by a snap Firefox.
+    Reports live under the system temp dir (/tmp, or $TMPDIR if set), as the
+    FHS requires /tmp to be available; we do not clutter $HOME. A dedicated
+    per-run directory lets us serve the report over a loopback HTTP connection
+    without exposing unrelated files.
     """
-    d = os.path.join(os.path.expanduser("~"), "git-diff-html")
-    os.makedirs(d, exist_ok=True)
-    return d
+    return tempfile.mkdtemp(prefix="git-diff-html-", dir=tempfile.gettempdir())
 
 
 def write_report(html_output, output=None):
-    """Write the report to `output` (or a temp file under ~/git-diff-html/) and return its path."""
+    """Write the report to `output`, or to report.html in a fresh /tmp dir."""
     if output:
         out_path = os.path.abspath(output)
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(html_output)
     else:
-        # Secure, randomly-generated name via mkstemp; keep the file open for
-        # writing through the same descriptor (avoids chmod/rename races).
-        fd, out_path = tempfile.mkstemp(prefix="git_diff_", suffix=".html",
-                                        dir=_report_dir())
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
+        out_path = os.path.join(_report_dir(), "report.html")
+        with open(out_path, "w", encoding="utf-8") as f:
             f.write(html_output)
     return out_path
 
 
-def _open_report(out_path):
-    """Open the report in this machine's default browser.
+def _open_report(out_path, via_http=False):
+    """Open the report in this machine's default browser and return the URL.
+
+    For a one-off report (`via_http=True`) we serve it over a loopback-only
+    HTTP server instead of a file:// URL: sandboxed browsers such as
+    snap-packaged Firefox cannot read files under /tmp, but they can reach
+    localhost over the network, so this works on both Debian and Ubuntu.
 
     Uses xdg-open directly instead of webbrowser.open(), because webbrowser
     honors $BROWSER and some environments (e.g. VS Code Remote-SSH) set it to a
@@ -984,12 +984,51 @@ def _open_report(out_path):
     """
     import shutil
     import subprocess
-    if shutil.which("xdg-open"):
-        subprocess.Popen(["xdg-open", out_path],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return
-    import webbrowser
-    webbrowser.open(f"file://{out_path}")
+
+    def launch(target):
+        if shutil.which("xdg-open"):
+            subprocess.Popen(["xdg-open", target],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            import webbrowser
+            webbrowser.open(target)
+
+    if not via_http:
+        launch(out_path)
+        return f"file://{out_path}"
+
+    import http.server
+    import socketserver
+    import threading
+
+    tmpdir = os.path.dirname(out_path)
+    name = os.path.basename(out_path)
+
+    served = threading.Event()
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=tmpdir, **kwargs)
+
+        def do_GET(self):
+            super().do_GET()
+            served.set()
+
+        def log_message(self, *args):
+            pass
+
+    srv = socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+    url = f"http://127.0.0.1:{port}/{name}"
+    launch(url)
+
+    # Keep serving until the browser has fetched the report, then stop.
+    served.wait(timeout=60)
+    srv.shutdown()
+    srv.server_close()
+    return url
 
 
 def _finish(html_output, out_files, total_add, total_del, args):
@@ -998,10 +1037,10 @@ def _finish(html_output, out_files, total_add, total_del, args):
     print(f"  Files: {out_files}  (+{total_add} / -{total_del} lines)")
 
     if not args.no_open:
-        _open_report(out_path)
-        print(f"  Opened in default browser: file://{out_path}")
+        url = _open_report(out_path, via_http=(args.output is None))
+        print(f"  Opened in default browser: {url}")
     else:
-        print(f"  Open in browser: file://{out_path}")
+        print(f"  Report saved to: {out_path}")
 
 
 def _plain_file_diff(args, cwd):
@@ -1049,7 +1088,7 @@ def main():
         epilog=__doc__,
     )
     parser.add_argument("-o", "--output", default=None,
-                        help="Output HTML file (default: securely-named temp file under ~/git-diff-html/)")
+                        help="Output HTML file (default: temp file under /tmp)")
     parser.add_argument("-c", "--commit", default=None,
                         help="compare against a specific commit/ref (default: HEAD)")
     parser.add_argument("-r", "--range", nargs=2, metavar=("REF1", "REF2"),

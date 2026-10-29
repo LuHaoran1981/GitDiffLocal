@@ -1,4 +1,4 @@
-.TH GIT-DIFF-HTML 1 "October 2026" "git-diff-html 1.2" "User Commands"
+.TH GIT-DIFF-HTML 1 "October 2026" "git-diff-html 1.2.1" "User Commands"
 .SH NAME
 git-diff-html \- generate a side-by-side HTML report of Git differences
 .SH SYNOPSIS
@@ -15,12 +15,15 @@ git-diff-html \- generate a side-by-side HTML report of Git differences
 renders the differences in a Git repository as a Gerrit/BeyondCompare-style
 side-by-side HTML report with inline highlighting.  The report is a single
 self-contained HTML file that can be opened in any modern browser.
+By default it is written to a temporary directory under /tmp and opened in
+the browser through a local HTTP connection, so sandboxed browsers (such as
+snap-packaged Firefox) can display it.
 Outside a Git repository, two files can be compared directly with
 .BR "git-diff-html FILE_OLD FILE_NEW" .
 .SH OPTIONS
 .TP
 .BR \-o ", " \-\-output " \fIFILE\fR"
-Write the report to \fIFILE\fR (default: a temporary file under ~/git-diff-html/).
+Write the report to \fIFILE\fR (default: a temporary file under /tmp).
 .TP
 .BR \-c ", " \-\-commit " \fIREF\fR"
 Compare against \fIREF\fR (default: \fIHEAD\fR).

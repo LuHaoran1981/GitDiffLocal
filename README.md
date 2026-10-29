@@ -71,7 +71,7 @@ Scan left to right: the **first argument git can resolve to a commit** becomes t
 
 | Option | Description |
 | --- | --- |
-| `-o, --output FILE` | Output HTML file path (default: a temp file under `~/git-diff-html/`) |
+| `-o, --output FILE` | Output HTML file path (default: a temp file under `/tmp`, opened via a local HTTP server) |
 | `-c, --commit REF` | Base commit to compare against (default `HEAD`) |
 | `-r, --range REF1 REF2` | Compare two commits directly |
 | `-s, --staged` | Show staged changes (`git diff --cached`) |
@@ -185,7 +185,7 @@ gdhtm -s               # 暂存区变更（git diff --cached）
 
 | 选项 | 说明 |
 | --- | --- |
-| `-o, --output FILE` | 输出 HTML 文件路径（默认写入 `~/git-diff-html/` 下的临时文件） |
+| `-o, --output FILE` | 输出 HTML 文件路径（默认写入 `/tmp` 下的临时文件，通过本地 HTTP 服务打开） |
 | `-c, --commit REF` | 对比的基准提交（默认 `HEAD`） |
 | `-r, --range REF1 REF2` | 直接对比两个提交 |
 | `-s, --staged` | 显示暂存区变更（`git diff --cached`） |
